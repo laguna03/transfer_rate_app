@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Transfer Rate Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>Transfer Rate Dashboard</h1>
+
+        <div class="transfer-rate">
+            <h2>Current Transfer Rate: <span id="transferRate">{{ transfer_rate }}%</span></h2>
+        </div>
+
+        <form id="logCallForm">
+            <label for="callType">Select Call Type to Log:</label>
+            <select id="callType" name="callType" required>
+                <!-- Populate options with all call types -->
+                <option value="" disabled selected>Select a call type</option>
+                <option value="AOD">AOD</option>
+                <option value="APPOINTMENT">APPOINTMENT</option>
+                <option value="T2">T2</option>
+                <option value="HPA">HPA</option>
+                <option value="AFCT2">AFCT2</option>
+                <option value="AFCAPPOINTMENT">AFCAPPOINTMENT</option>
+                <option value="NON-MED">NON-MED</option>
+                <option value="CUSTOMER SERVICE">CUSTOMER SERVICE</option>
+                <option value="INVALID">INVALID</option>
+                <option value="PROVIDER">PROVIDER</option>
+                <option value="BROKER">BROKER</option>
+                <option value="U65">U65</option>
+                <option value="LOYALTY">LOYALTY</option>
+                <option value="CALLBLUE">CALLBLUE</option>
+                <option value="SEMINAR">SEMINAR</option>
+            </select>
+            <button type="submit">Log Call</button>
+        </form>
+
+        <h2>All Calls Logged</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Call Type</th>
+                    <th>Timestamp</th>
+                    <th>Action</th> <!-- New column -->
+                </tr>
+            </thead>
+            <tbody id="callsTableBody">
+                {% for call in calls %}
+                <tr data-id="{{ call.id }}">
+                    <td>{{ call.id }}</td>
+                    <td>{{ call.call_type }}</td>
+                    <td>{{ call.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                    <td><button class="delete-btn">Delete</button></td> <!-- Delete button -->
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
