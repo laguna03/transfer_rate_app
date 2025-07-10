@@ -1,31 +1,47 @@
-document.getElementById("logCallForm").addEventListener("submit", async function(event) {
+document.getElementById("createLogListForm").addEventListener("submit", async function(event) {
     event.preventDefault();
-    const callType = document.getElementById("callType").value;
-    if (!callType) {
-        alert("Please select a call type");
-        return;
-    }
-
+    const name = document.getElementById("logListName").value.trim();
+    if (!name) return;
     try {
-        const response = await fetch("/calls/", {
+        const response = await fetch("/log-lists/", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ call_type: callType })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
         });
-
-        if (!response.ok) {
-            throw new Error("Failed to log call");
-        }
-
-        // Refresh the page to update call list and transfer rate
+        if (!response.ok) throw new Error("Failed to create log list");
         window.location.reload();
-
     } catch (error) {
         alert("Error: " + error.message);
     }
 });
+
+document.getElementById("logListSelect").addEventListener("change", function() {
+    const logListId = this.value;
+    window.location.href = `/?log_list_id=${logListId}`;
+});
+
+
+document.getElementById("logCallForm").addEventListener("submit", async function(event) {
+    event.preventDefault();
+    const callType = document.getElementById("callType").value;
+    const logListId = document.getElementById("logListSelect").value;
+    if (!callType || !logListId) {
+        alert("Please select a call type and log list");
+        return;
+    }
+    try {
+        const response = await fetch("/calls/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ call_type: callType, log_list_id: parseInt(logListId) })
+        });
+        if (!response.ok) throw new Error("Failed to log call");
+        window.location.reload();
+    } catch (error) {
+        alert("Error: " + error.message);
+    }
+});
+
 
 // Handle delete button clicks
 document.addEventListener("click", async function(event) {
