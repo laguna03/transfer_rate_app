@@ -1,3 +1,4 @@
+// Main JavaScript file for the application
 document.getElementById("createLogListForm").addEventListener("submit", async function(event) {
     event.preventDefault();
     const name = document.getElementById("logListName").value.trim();
@@ -14,13 +15,48 @@ document.getElementById("createLogListForm").addEventListener("submit", async fu
         alert("Error: " + error.message);
     }
 });
-
+// Handle log list selection change
 document.getElementById("logListSelect").addEventListener("change", function() {
     const logListId = this.value;
     window.location.href = `/?log_list_id=${logListId}`;
 });
 
+// Handle log list deletion
+document.getElementById("deleteLogListBtn").addEventListener("click", async function() {
+    const logListSelect = document.getElementById("logListSelect");
+    const logListId = logListSelect.value;
+    const logListName = logListSelect.options[logListSelect.selectedIndex].text;
 
+    if (!logListId) {
+        alert("Please select a log list to delete");
+        return;
+    }
+
+    if (logListSelect.options.length <= 1) {
+        alert("Cannot delete the last log list");
+        return;
+    }
+
+    if (confirm(`Are you sure you want to delete the log list "${logListName}" and all its call logs?`)) {
+        try {
+            const response = await fetch(`/log-lists/${logListId}`, {
+                method: "DELETE"
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to delete log list");
+            }
+
+            // Redirect to home to show the first available log list
+            window.location.href = "/";
+
+        } catch (error) {
+            alert("Error: " + error.message);
+        }
+    }
+});
+
+// Handle call logging
 document.getElementById("logCallForm").addEventListener("submit", async function(event) {
     event.preventDefault();
     const callType = document.getElementById("callType").value;

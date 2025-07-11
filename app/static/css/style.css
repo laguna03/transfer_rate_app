@@ -1,75 +1,311 @@
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f8;
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
 
-.container {
-    max-width: 800px;
-    margin: 40px auto;
-    background: white;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-h1, h2 {
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
     color: #333;
 }
 
-form {
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 30px;
+}
+
+h2 {
+    color: #2d3748;
+    font-weight: 600;
     margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+/* Log List Controls */
+#logListControls {
+    background: linear-gradient(135deg, #f7fafc, #edf2f7);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 30px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+#logListControls form {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    margin: 0;
 }
 
-select {
-    padding: 6px;
-    font-size: 16px;
+#logListControls input[type="text"] {
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    min-width: 200px;
+    transition: all 0.3s ease;
+    background: white;
 }
 
+#logListControls input[type="text"]:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+#logListControls > div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: 20px;
+}
+
+/* Buttons */
 button {
-    background: #a400f6;
+    background: linear-gradient(135deg, #667eea, #764ba2);
     border: none;
     color: white;
-    padding: 8px 14px;
-    font-size: 16px;
-    border-radius: 4px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 button:hover {
-    background: #8f01f4;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px 12px;
-    text-align: left;
-}
-
-th {
-    background-color: #8518ebe7;
-    color: white;
+button:active {
+    transform: translateY(0);
 }
 
 .delete-btn {
-    background-color: #f44336;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
+    background: linear-gradient(135deg, #fc8181, #f56565);
+    padding: 10px 20px;
+    font-size: 13px;
 }
 
 .delete-btn:hover {
-    background-color: #d32f2f;
+    background: linear-gradient(135deg, #f56565, #e53e3e);
+}
+
+/* Select Dropdown */
+select {
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    background: white;
+    min-width: 180px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Transfer Rate Display */
+.transfer-rate {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 16px rgba(72, 187, 120, 0.3);
+}
+
+.transfer-rate h2 {
+    color: white;
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+#transferRate {
+    font-size: 3rem;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Form Styling */
+form {
+    background: #f7fafc;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+}
+
+th {
+    background: linear-gradient(135deg, #4a5568, #2d3748);
+    color: white;
+    padding: 20px 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+td {
+    padding: 18px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    transition: background-color 0.2s ease;
+}
+
+tr:hover td {
+    background-color: #f7fafc;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+/* Call Type Tags */
+.call-type-tag {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.potential-sale {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+}
+
+.other-call {
+    background: linear-gradient(135deg, #cbd5e0, #a0aec0);
+    color: #2d3748;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+        margin: 10px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    #logListControls {
+        padding: 20px;
+    }
+
+    #logListControls form,
+    #logListControls > div {
+        flex-direction: column;
+        align-items: stretch;
+        margin-left: 0;
+        gap: 10px;
+    }
+
+    form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    table {
+        font-size: 14px;
+    }
+
+    th, td {
+        padding: 12px 8px;
+    }
+}
+
+/* Loading Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.container {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Focus States */
+button:focus,
+select:focus,
+input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+/* Improved spacing */
+.transfer-rate + form {
+    margin-top: 30px;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6b46a3);
 }
