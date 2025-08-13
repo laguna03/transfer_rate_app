@@ -323,7 +323,7 @@ function displayUserDetails(data) {
                 <h6>User Information</h6>
                 <table class="table table-sm">
                     <tr><td><strong>Username:</strong></td><td>${user.username}</td></tr>
-                    <tr><td><strong>Email:</strong></td><td>${user.email}</td></tr>
+                    <tr><td><strong>Full Name:</strong></td><td>${user.name}</td></tr>
                     <tr><td><strong>Role:</strong></td><td><span class="badge bg-primary">${user.role}</span></td></tr>
                     <tr><td><strong>Status:</strong></td><td><span class="badge bg-${user.is_active ? 'success' : 'secondary'}">${user.is_active ? 'Active' : 'Inactive'}</span></td></tr>
                     <tr><td><strong>Created:</strong></td><td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td></tr>
@@ -382,7 +382,7 @@ function displayUserDetails(data) {
                         <tr>
                             <td><span class="badge bg-${call.is_potential_sale ? 'success' : 'secondary'}">${call.call_type}</span></td>
                             <td>${call.timestamp ? new Date(call.timestamp).toLocaleString() : 'N/A'}</td>
-                            <td>${call.is_potential_sale ? '✅' : '❌'}</td>
+                            <td>${call.is_potential_sale ? '<span class="text-success">Yes</span>' : '<span class="text-secondary">No</span>'}</td>
                         </tr>
                     `;
                 });

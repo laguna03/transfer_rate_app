@@ -76,6 +76,16 @@ async def login_submit(
             "error": "Invalid credentials or account deactivated"
         })
 
+    # Check if user must change password (temporary password)
+    if user.must_change_password:
+        # Create a temporary token for password change
+        temp_token = auth.create_access_token(data={"sub": user.username})
+        response = RedirectResponse(
+            url="/change-password", status_code=status.HTTP_302_FOUND)
+        response.set_cookie(key="temp_access_token",
+                            value=f"Bearer {temp_token}", httponly=True)
+        return response
+
     # Create token and redirect based on user role
     access_token = auth.create_access_token(data={"sub": user.username})
 
@@ -97,6 +107,80 @@ def logout():
     response = RedirectResponse(
         url="/login", status_code=status.HTTP_302_FOUND)
     response.delete_cookie(key="access_token")
+    return response
+
+
+# Password change endpoints
+@app.get("/change-password", response_class=HTMLResponse)
+def change_password_page(request: Request):
+    return templates.TemplateResponse("change_password.html", {"request": request})
+
+
+@app.post("/change-password")
+async def change_password_submit(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # Get user from temporary token
+    temp_token = request.cookies.get("temp_access_token")
+    if not temp_token:
+        return RedirectResponse(url="/login", status_code=302)
+
+    # Remove "Bearer " prefix
+    if temp_token.startswith("Bearer "):
+        temp_token = temp_token[7:]
+
+    # Get user from token
+    try:
+        username = auth.get_username_from_token(temp_token)
+        if not username:
+            return RedirectResponse(url="/login", status_code=302)
+
+        user = crud.get_user_by_username(db, username)
+        if not user:
+            return RedirectResponse(url="/login", status_code=302)
+    except:
+        return RedirectResponse(url="/login", status_code=302)
+
+    # Validate current password
+    if not auth.verify_password(current_password, user.hashed_password):
+        return templates.TemplateResponse("change_password.html", {
+            "request": request,
+            "error": "Current password is incorrect"
+        })
+
+    # Validate new passwords match
+    if new_password != confirm_password:
+        return templates.TemplateResponse("change_password.html", {
+            "request": request,
+            "error": "New passwords do not match"
+        })
+
+    # Validate password length
+    if len(new_password) < 6:
+        return templates.TemplateResponse("change_password.html", {
+            "request": request,
+            "error": "Password must be at least 6 characters long"
+        })
+
+    # Update password and clear temporary flag
+    crud.update_user_password(db, user.id, new_password)
+
+    # Create regular access token and redirect to appropriate dashboard
+    access_token = auth.create_access_token(data={"sub": user.username})
+
+    if user.role == UserRole.ADMIN:
+        redirect_url = "/admin/dashboard"
+    else:
+        redirect_url = "/"
+
+    response = RedirectResponse(url=redirect_url, status_code=302)
+    response.set_cookie(key="access_token",
+                        value=f"Bearer {access_token}", httponly=True)
+    response.delete_cookie(key="temp_access_token")
     return response
 
 
@@ -126,11 +210,6 @@ def create_user(
         raise HTTPException(
             status_code=400,
             detail="Username already exists"
-        )
-    if crud.get_user_by_email(db, user_data.email):
-        raise HTTPException(
-            status_code=400,
-            detail="Email already exists"
         )
 
     # Create user with provided password
@@ -303,7 +382,7 @@ def read_dashboard(
             "log_lists": [],
             "current_log_list_id": None,
             "current_user": current_user,
-            "message": "You don't have any log lists yet. Create your first log list to start tracking calls."
+            "message": "Welcome! To get started, create your first log list using the form below. You can organize your calls into different lists (e.g., by date, campaign, or team)."
         })
 
     if not log_list_id:
@@ -437,17 +516,6 @@ def delete_log_list(
     if current_user.role != UserRole.ADMIN and log_list.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Check if it's the last log list for this user
-    if current_user.role == UserRole.ADMIN:
-        total_log_lists = db.query(LogList).count()
-    else:
-        total_log_lists = db.query(LogList).filter(
-            LogList.owner_id == current_user.id).count()
-
-    if total_log_lists <= 1:
-        raise HTTPException(
-            status_code=400, detail="Cannot delete the last log list")
-
     # Delete all associated call logs first (cascade should handle this, but being explicit)
     db.query(CallLog).filter(CallLog.log_list_id == log_list_id).delete()
 
@@ -461,7 +529,7 @@ def delete_log_list(
 @app.post("/init-admin")
 def initialize_admin(
     username: str = Form(...),
-    email: str = Form(...),
+    name: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -474,8 +542,10 @@ def initialize_admin(
         )
 
     # Create the first admin user
-    admin_user = crud.create_admin_user(db, username, email, password)
-    return {"message": "Admin user created successfully", "username": admin_user.username}
+    admin_user = crud.create_admin_user(db, username, name, password)
+
+    # Redirect to login page after successful creation
+    return RedirectResponse(url="/login", status_code=302)
 
 
 @app.get("/init", response_class=HTMLResponse)
@@ -491,6 +561,8 @@ def init_page(request: Request, db: Session = Depends(get_db)):
 # Startup event to ensure tables are created
 @app.on_event("startup")
 def startup_event():
+    models.Base.metadata.create_all(bind=engine)
+    # Create database tables
     models.Base.metadata.create_all(bind=engine)
 
 # Debug endpoint to check authentication
@@ -566,7 +638,7 @@ def get_user_details(
         "user": {
             "id": user.id,
             "username": user.username,
-            "email": user.email,
+            "name": user.name,
             "role": user.role.value,
             "is_active": user.is_active,
             "created_at": user.created_at.isoformat() if user.created_at else None

@@ -177,3 +177,13 @@ def get_current_user_web(
         # For web pages, redirect to login instead of returning 401
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url="/login", status_code=302)
+
+
+def get_username_from_token(token: str) -> Optional[str]:
+    """Extract username from JWT token without full validation"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        return username
+    except JWTError:
+        return None

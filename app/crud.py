@@ -30,6 +30,7 @@ def create_user(db: Session, user: UserCreate, created_by_id: int,
                 temp_password: str = None) -> tuple[User, str]:
     """Create a new user."""
     # Generate temporary password if not provided
+    is_temp_password = temp_password is None
     if temp_password is None:
         temp_password = generate_temp_password()
 
@@ -40,7 +41,9 @@ def create_user(db: Session, user: UserCreate, created_by_id: int,
         name=user.name,
         hashed_password=hashed_password,
         role=user.role,
-        created_by_id=created_by_id
+        created_by_id=created_by_id,
+        # Force password change if temp password was generated
+        must_change_password=is_temp_password
     )
 
     db.add(db_user)
@@ -122,6 +125,7 @@ def reset_user_password(db: Session, user_id: int) -> tuple[Optional[User], str]
 
     temp_password = generate_temp_password()
     db_user.hashed_password = get_password_hash(temp_password)
+    db_user.must_change_password = True  # Force password change on next login
 
     db.commit()
     db.refresh(db_user)
@@ -129,7 +133,7 @@ def reset_user_password(db: Session, user_id: int) -> tuple[Optional[User], str]
     return db_user, temp_password
 
 
-def create_admin_user(db: Session, username: str, email: str, password: str) -> User:
+def create_admin_user(db: Session, username: str, name: str, password: str) -> User:
     """Create the initial administrator user if none exists."""
     admin_exists = db.query(User).filter(User.role == UserRole.ADMIN).first()
     if admin_exists:
@@ -137,7 +141,7 @@ def create_admin_user(db: Session, username: str, email: str, password: str) -> 
 
     admin_user = User(
         username=username,
-        email=email,
+        name=name,
         hashed_password=get_password_hash(password),
         role=UserRole.ADMIN,
         is_active=True
@@ -262,3 +266,17 @@ def get_user_log_lists_with_calls(db: Session, user_id: int, potential_sale_call
         })
 
     return result
+
+
+def update_user_password(db: Session, user_id: int, new_password: str) -> bool:
+    """Update user password and clear must_change_password flag."""
+    db_user = get_user(db, user_id)
+    if not db_user:
+        return False
+
+    db_user.hashed_password = get_password_hash(new_password)
+    db_user.must_change_password = False
+
+    db.commit()
+    db.refresh(db_user)
+    return True
