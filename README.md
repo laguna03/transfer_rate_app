@@ -1,37 +1,228 @@
-# Transfer Rate Application
+# Transfer Rate App
 
-A FastAPI-based web application for tracking and monitoring call transfer rates, built to help analyze call center performance and sales conversion metrics.
+A comprehensive web application for tracking call transfer rates with user management and role-based access control.
 
 ## Features
 
-- 📊 **Call Logging**: Track calls with various types (AOD, Appointment, T2, HPA, etc.)
-- 📈 **Transfer Rate Calculation**: Automatically calculate transfer rates based on call types
-- 🗂️ **Multiple Log Lists**: Organize calls into different lists for better management
-- 📱 **Responsive Web Interface**: Modern, mobile-friendly dashboard
-- 🔍 **Real-time Analytics**: View call statistics and transfer rates instantly
-- 🗑️ **Data Management**: Add, edit, and delete call logs and lists
+### User Management
 
-## Tech Stack
+- **Two-role system**: Administrator and User
+- **Administrator capabilities**:
+  - Create, edit, and deactivate user accounts
+  - Access all log lists and call data
+  - Reset user passwords
+  - Full administrative dashboard
+- **User capabilities**:
+  - Access only their own log lists
+  - Create and manage personal call logs
+  - View transfer rate statistics
+
+### Authentication & Security
+
+- JWT-based authentication with cookie support
+- Secure password hashing using bcrypt
+- Role-based access control
+- Session management
+
+### Call Tracking
+
+- Multiple call types (AOD, APPOINTMENT, T2, HPA, etc.)
+- Transfer rate calculation
+- Real-time call logging
+- Call history and analytics
+
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.12+
+- PostgreSQL database
+- Virtual environment support
+
+### Installation
+
+1. **Clone and setup environment**:
+
+   ```bash
+   cd transfer_rate_app
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Database setup**:
+
+   - Ensure PostgreSQL is running
+   - Create database named `transfer_db`
+   - Update database URL in `app/database.py` if needed
+   - Run migration:
+
+   ```bash
+   python migrate.py
+   ```
+
+4. **Start the application**:
+   ```bash
+   chmod +x run.sh
+   ./run.sh
+   ```
+   Or manually:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### Initial Setup
+
+1. **First-time access**:
+
+   - Navigate to `http://localhost:8000`
+   - You'll be redirected to `/init` to create the first administrator user
+   - Fill in the administrator credentials
+
+2. **Administrator login**:
+
+   - After creating the administrator user, login at `/login`
+   - Access the administrator dashboard at `/admin/dashboard`
+
+3. **User management**:
+   - Administrators can create user accounts from the administrator dashboard
+   - New users receive temporary passwords that should be shared securely
+   - Users must use these credentials to login
+
+## API Endpoints
+
+### Authentication
+
+- `GET /login` - Login page
+- `POST /login` - Submit login form
+- `POST /token` - API token authentication
+- `GET /logout` - Logout
+
+### User Management (Administrator only)
+
+- `GET /admin/dashboard` - Administrator dashboard
+- `GET /admin/users` - List all users
+- `POST /admin/users` - Create new user
+- `PUT /admin/users/{id}` - Update user
+- `POST /admin/users/{id}/activate` - Activate user
+- `POST /admin/users/{id}/deactivate` - Deactivate user
+- `POST /admin/users/{id}/reset-password` - Reset user password
+
+### Application
+
+- `GET /` - Main dashboard
+- `GET /log-lists/` - Get accessible log lists
+- `POST /log-lists/` - Create new log list
+- `DELETE /log-lists/{id}` - Delete log list
+- `POST /calls/` - Log new call
+- `DELETE /calls/{id}` - Delete call
+
+## Security Features
+
+### Password Security
+
+- Bcrypt hashing for all passwords
+- Temporary password generation for new users
+- Secure password reset functionality
+
+### Access Control
+
+- JWT tokens with configurable expiration
+- Cookie-based authentication for web interface
+- Role-based endpoint protection
+- User data isolation (users can only access their own data)
+
+### Data Protection
+
+- SQL injection protection via SQLAlchemy ORM
+- CSRF protection for forms
+- Secure cookie handling
+
+## Database Schema
+
+### Users Table
+
+- `id` - Primary key
+- `username` - Unique username
+- `email` - Unique email address
+- `hashed_password` - Bcrypt hashed password
+- `role` - ADMIN or USER
+- `is_active` - Account status
+- `created_at` - Timestamp
+- `created_by_id` - Reference to creating administrator
+
+### Log Lists Table
+
+- `id` - Primary key
+- `name` - List name
+- `owner_id` - Foreign key to users table
+
+### Call Logs Table
+
+- `id` - Primary key
+- `call_type` - Type of call (AOD, APPOINTMENT, etc.)
+- `timestamp` - When call was logged
+- `log_list_id` - Foreign key to log_lists table
+
+## Technology Stack
 
 - **Backend**: FastAPI (Python)
 - **Database**: PostgreSQL with SQLAlchemy ORM
-- **Frontend**: HTML, CSS, JavaScript (Vanilla)
-- **Server**: Uvicorn ASGI server
+- **Authentication**: JWT + python-jose
+- **Password Hashing**: passlib + bcrypt
+- **Frontend**: HTML5 + Bootstrap 5 + Vanilla JavaScript
+- **Templating**: Jinja2
 
-## Prerequisites
+## Configuration
 
-- Python 3.8 or higher
-- PostgreSQL database
-- Git
-
-## Installation & Setup
-
-### 1. Clone the Repository
+### Environment Variables
 
 ```bash
-git clone https://github.com/laguna03/transfer_rate_app.git
-cd transfer_rate_app
+DATABASE_URL=postgresql://user:password@localhost:5432/transfer_db
+SECRET_KEY=your-secret-key-here  # Auto-generated if not set
 ```
+
+### Security Configuration
+
+- Token expiration: 30 minutes (configurable)
+- Password complexity: Automatically generated 12-character passwords
+- Session management: HTTP-only cookies
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Database connection errors**: Verify PostgreSQL is running and connection string is correct
+2. **Permission denied**: Ensure proper file permissions on `run.sh`
+3. **Token errors**: Clear browser cookies and re-login
+4. **Import errors**: Ensure virtual environment is activated and dependencies are installed
+
+### Development Mode
+
+- Run with `--reload` flag for auto-restart on code changes
+- Debug mode provides detailed error messages
+- Check logs for authentication and database issues
+
+## Production Deployment
+
+For production deployment:
+
+1. Set strong `SECRET_KEY` environment variable
+2. Use production database with proper credentials
+3. Configure HTTPS/SSL
+4. Set up proper logging
+5. Use production WSGI server (gunicorn, etc.)
+6. Implement proper backup strategy
+7. Set up monitoring and alerts
+   git clone https://github.com/laguna03/transfer_rate_app.git
+   cd transfer_rate_app
+
+````
 
 ### 2. Set Up Virtual Environment
 
@@ -44,7 +235,7 @@ python -m venv venv
 source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
-```
+````
 
 ### 3. Install Dependencies
 

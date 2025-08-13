@@ -26,19 +26,27 @@ MANIFEST
 venv/
 env/
 ENV/
+.venv/
 
 # Database
 *.db
+*.sqlite
 *.sqlite3
+transfer_db.sqlite
+transfer_db.sqlite.backup*
 
 # Environment variables
 .env
+.env.local
+.env.production
+.env.staging
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+.vim/
 
 # OS
 .DS_Store
@@ -48,6 +56,37 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
 # Logs
 *.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+cookies.txt
+
+# Migration scripts (after use)
+*_migration.py
+migrate*.py
+
+# Test and demo files
+*_demo.html
+test_*.html
+demo_*.py
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# FastAPI specific
+.pytest_cache/

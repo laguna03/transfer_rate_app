@@ -1,4 +1,22 @@
 // Main JavaScript file for the application
+
+// Utility function to get cookie value
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Get auth headers
+function getAuthHeaders() {
+    const token = getCookie('access_token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': token || ''
+    };
+}
+
 document.getElementById("createLogListForm").addEventListener("submit", async function(event) {
     event.preventDefault();
     const name = document.getElementById("logListName").value.trim();
@@ -6,7 +24,7 @@ document.getElementById("createLogListForm").addEventListener("submit", async fu
     try {
         const response = await fetch("/log-lists/", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ name })
         });
         if (!response.ok) throw new Error("Failed to create log list");
@@ -15,6 +33,7 @@ document.getElementById("createLogListForm").addEventListener("submit", async fu
         alert("Error: " + error.message);
     }
 });
+
 // Handle log list selection change
 document.getElementById("logListSelect").addEventListener("change", function() {
     const logListId = this.value;
@@ -40,7 +59,8 @@ document.getElementById("deleteLogListBtn").addEventListener("click", async func
     if (confirm(`Are you sure you want to delete the log list "${logListName}" and all its call logs?`)) {
         try {
             const response = await fetch(`/log-lists/${logListId}`, {
-                method: "DELETE"
+                method: "DELETE",
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) {
@@ -68,7 +88,7 @@ document.getElementById("logCallForm").addEventListener("submit", async function
     try {
         const response = await fetch("/calls/", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ call_type: callType, log_list_id: parseInt(logListId) })
         });
         if (!response.ok) throw new Error("Failed to log call");
@@ -77,7 +97,6 @@ document.getElementById("logCallForm").addEventListener("submit", async function
         alert("Error: " + error.message);
     }
 });
-
 
 // Handle delete button clicks
 document.addEventListener("click", async function(event) {
@@ -88,7 +107,8 @@ document.addEventListener("click", async function(event) {
         if (confirm("Are you sure you want to delete this call log?")) {
             try {
                 const response = await fetch(`/calls/${callId}`, {
-                    method: "DELETE"
+                    method: "DELETE",
+                    headers: getAuthHeaders()
                 });
 
                 if (!response.ok) {
