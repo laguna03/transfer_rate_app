@@ -32,6 +32,7 @@ class LogList(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     call_logs = relationship(
         "CallLog", back_populates="log_list", cascade="all, delete-orphan")
     owner = relationship("User", back_populates="log_lists")

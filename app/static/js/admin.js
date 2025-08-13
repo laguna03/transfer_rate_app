@@ -417,6 +417,97 @@ function getTransferRateColor(rate) {
     return 'danger';
 }
 
+// Log Lists Filtering Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const monthFilter = document.getElementById('monthFilter');
+    const nameFilter = document.getElementById('nameFilter');
+    const logListsTable = document.getElementById('logListsTable');
+    const listCount = document.getElementById('listCount');
+
+    if (monthFilter && nameFilter && logListsTable) {
+        function filterLogLists() {
+            const monthValue = monthFilter.value;
+            const nameValue = nameFilter.value.toLowerCase();
+            const rows = logListsTable.querySelectorAll('tbody tr');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const rowMonth = row.getAttribute('data-month') || '';
+                const rowName = row.getAttribute('data-name') || '';
+                const rowOwner = row.getAttribute('data-owner') || '';
+
+                let showRow = true;
+
+                // Filter by month
+                if (monthValue && rowMonth !== monthValue) {
+                    showRow = false;
+                }
+
+                // Filter by name (searches both list name and owner)
+                if (nameValue && !rowName.includes(nameValue) && !rowOwner.includes(nameValue)) {
+                    showRow = false;
+                }
+
+                if (showRow) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update count
+            if (listCount) {
+                listCount.textContent = `${visibleCount} of ${rows.length} lists`;
+            }
+
+            // Update system overview based on visible rows
+            updateSystemOverview(rows);
+        }
+
+        function updateSystemOverview(allRows) {
+            const visibleRows = Array.from(allRows).filter(row => row.style.display !== 'none');
+
+            let totalCalls = 0;
+            let totalPotential = 0;
+
+            visibleRows.forEach(row => {
+                const callsCell = row.querySelector('td:nth-child(4)');
+                if (callsCell) {
+                    const callsText = callsCell.textContent.trim();
+                    if (callsText !== '0' && callsText !== '-') {
+                        const matches = callsText.match(/(\d+)\/(\d+)/);
+                        if (matches) {
+                            totalPotential += parseInt(matches[1]);
+                            totalCalls += parseInt(matches[2]);
+                        }
+                    }
+                }
+            });
+
+            // Update system overview stats
+            const logListsCountElement = document.querySelector('.col-md-3:nth-child(2) h4');
+            const totalCallsElement = document.querySelector('.col-md-3:nth-child(3) h4');
+            const systemRateElement = document.querySelector('.col-md-3:nth-child(4) h4');
+
+            if (logListsCountElement) {
+                logListsCountElement.textContent = visibleRows.length;
+            }
+            if (totalCallsElement) {
+                totalCallsElement.textContent = totalCalls;
+            }
+            if (systemRateElement) {
+                const systemRate = totalCalls > 0 ? ((totalPotential / totalCalls) * 100).toFixed(1) : 0;
+                systemRateElement.textContent = systemRate + '%';
+            }
+        }
+
+        // Add event listeners
+        monthFilter.addEventListener('change', filterLogLists);
+        nameFilter.addEventListener('input', filterLogLists);
+    }
+});
+
 // Utility function to get cookie value
 function getCookie(name) {
     const value = `; ${document.cookie}`;

@@ -152,45 +152,75 @@
         <div class="row mt-4">
             <div class="col-md-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h3>All Log Lists</h3>
-                        <small class="text-muted">{{ log_lists_with_stats|length }} total lists</small>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3>All Log Lists</h3>
+                            <small class="text-muted" id="listCount">{{ log_lists_with_stats|length }} total lists</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select id="monthFilter" class="form-select form-select-sm" style="width: auto;">
+                                <option value="">All Months</option>
+                                <option value="01">January</option>
+                                <option value="02">February</option>
+                                <option value="03">March</option>
+                                <option value="04">April</option>
+                                <option value="05">May</option>
+                                <option value="06">June</option>
+                                <option value="07">July</option>
+                                <option value="08">August</option>
+                                <option value="09">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                            <input type="text" id="nameFilter" class="form-control form-control-sm" placeholder="Filter by name..." style="width: 200px;">
+                        </div>
                     </div>
                     <div class="card-body">
                         {% if log_lists_with_stats %}
                         <div class="table-responsive">
-                            <table class="table table-sm">
+                            <table class="table table-sm" id="logListsTable">
                                 <thead>
                                     <tr>
                                         <th>List Name</th>
-                                        <th>Owner</th>
+                                        <th>User</th>
+                                        <th>Created</th>
                                         <th>Calls</th>
                                         <th>Rate</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for log_list in log_lists_with_stats %}
-                                    <tr>
+                                    <tr data-name="{{ log_list['name']|lower }}"
+                                        data-owner="{{ log_list['owner_name']|lower }}"
+                                        data-month="{% if log_list['latest_call'] %}{{ log_list['latest_call'].strftime('%m') }}{% endif %}">
                                         <td>
-                                            <strong>{{ log_list.name }}</strong>
-                                            {% if log_list.latest_call %}
-                                            <br><small class="text-muted">Last: {{ log_list.latest_call.strftime('%m/%d') }}</small>
+                                            <strong>{{ log_list['name'] }}</strong>
+                                            {% if log_list['latest_call'] %}
+                                            <br><small class="text-muted">Last: {{ log_list['latest_call'].strftime('%m/%d/%Y') }}</small>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <small>{{ log_list.owner_username }}</small>
+                                            <small>{{ log_list['owner_name'] }}</small>
                                         </td>
                                         <td>
-                                            {% if log_list.total_calls > 0 %}
-                                            <small class="text-muted">{{ log_list.potential_calls }}/{{ log_list.total_calls }}</small>
+                                            {% if log_list['created_at'] %}
+                                            <small class="text-muted">{{ log_list['created_at'].strftime('%m/%d/%Y') }}</small>
+                                            {% else %}
+                                            <small class="text-muted">-</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log_list['total_calls'] > 0 %}
+                                            <small class="text-muted">{{ log_list['potential_calls'] }}/{{ log_list['total_calls'] }}</small>
                                             {% else %}
                                             <small class="text-muted">0</small>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if log_list.total_calls > 0 %}
-                                            <span class="badge badge-enhanced badge-sm {{ 'badge-rate-excellent' if log_list.transfer_rate >= 70 else 'badge-rate-good' if log_list.transfer_rate >= 50 else 'badge-rate-poor' }}">
-                                                {{ log_list.transfer_rate }}%
+                                            {% if log_list['total_calls'] > 0 %}
+                                            <span class="badge badge-enhanced badge-sm {{ 'badge-rate-excellent' if log_list['transfer_rate'] >= 70 else 'badge-rate-good' if log_list['transfer_rate'] >= 50 else 'badge-rate-poor' }}">
+                                                {{ log_list['transfer_rate'] }}%
                                             </span>
                                             {% else %}
                                             <span class="text-muted">-</span>
