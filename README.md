@@ -55,18 +55,39 @@ A comprehensive web application for tracking call transfer rates with user manag
    pip install -r requirements.txt
    ```
 
-3. **Database setup**:
-
-   - Ensure PostgreSQL is running
-   - Create database named `transfer_db`
-   - Update database URL in `app/database.py` if needed
-   - Run migration:
+3. **Environment setup**:
 
    ```bash
-   python migrate.py
+   # Copy the example environment file
+   cp .env.example .env
+
+   # Edit .env with your PostgreSQL credentials
+   nano .env  # or your preferred editor
    ```
 
-4. **Start the application**:
+   Make sure to update the DATABASE_URL in `.env`:
+
+   ```env
+   DATABASE_URL=postgresql://your_username:your_password@localhost:5432/transfer_db
+   ```
+
+4. **Database setup**:
+
+   ```bash
+   # Make sure PostgreSQL is running
+   # On macOS: brew services start postgresql
+   # On Linux: sudo systemctl start postgresql
+
+   # Run the database setup script
+   python setup_db.py
+
+   # This script will:
+   # - Check if PostgreSQL is running
+   # - Create the transfer_db database if it doesn't exist
+   # - Test the connection
+   ```
+
+5. **Start the application**:
    ```bash
    chmod +x run.sh
    ./run.sh

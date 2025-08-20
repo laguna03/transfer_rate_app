@@ -34,6 +34,7 @@ ENV/
 *.sqlite3
 transfer_db.sqlite
 transfer_db.sqlite.backup*
+sqlite_backup_*/
 
 # Environment variables
 .env

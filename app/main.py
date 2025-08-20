@@ -562,22 +562,6 @@ def init_page(request: Request, db: Session = Depends(get_db)):
 @app.on_event("startup")
 def startup_event():
     models.Base.metadata.create_all(bind=engine)
-    # Create database tables
-    models.Base.metadata.create_all(bind=engine)
-
-# Debug endpoint to check authentication
-
-
-@app.get("/debug/auth")
-def debug_auth(request: Request, db: Session = Depends(get_db)):
-    """Debug endpoint to check authentication status."""
-    cookie_token = request.cookies.get("access_token")
-    return {
-        "has_cookie": bool(cookie_token),
-        "cookie_value": cookie_token[:20] + "..." if cookie_token else None,
-        "cookies": dict(request.cookies)
-    }
-
 
 @app.delete("/admin/users/{user_id}", status_code=204)
 def delete_user(
