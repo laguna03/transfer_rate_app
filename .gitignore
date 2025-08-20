@@ -1,4 +1,6 @@
+# =======================
 # Python
+# =======================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -22,34 +24,50 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# =======================
 # Virtual Environment
+# =======================
 venv/
 env/
 ENV/
 .venv/
+.env/
+pyvenv.cfg
 
-# Database
+# =======================
+# Database Files
+# =======================
 *.db
 *.sqlite
 *.sqlite3
-transfer_db.sqlite
-transfer_db.sqlite.backup*
+transfer_db.sqlite*
 sqlite_backup_*/
+*.sql.backup
 
-# Environment variables
+# =======================
+# Environment Variables
+# =======================
 .env
 .env.local
 .env.production
 .env.staging
+.env.development
 
-# IDE
+# =======================
+# IDE & Editors
+# =======================
 .vscode/
 .idea/
 *.swp
 *.swo
 .vim/
+*.sublime-project
+*.sublime-workspace
+.atom/
 
-# OS
+# =======================
+# Operating System
+# =======================
 .DS_Store
 .DS_Store?
 ._*
@@ -58,26 +76,53 @@ sqlite_backup_*/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+Thumbs.db:encryptable
 
-# Logs
+# =======================
+# Logs & Output
+# =======================
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Temporary files
+# =======================
+# Temporary Files
+# =======================
 *.tmp
 *.temp
-cookies.txt
+*.bak
+*.backup
+*.swp
+*~
+.#*
+#*#
 
-# Migration scripts (after use)
+# =======================
+# Migration & Setup Scripts
+# =======================
 *_migration.py
 migrate*.py
+setup_*.py
+inspect_*.py
+verify_*.py
+complete_*.py
+simple_*.py
 
-# Test and demo files
+# =======================
+# Test & Debug Files
+# =======================
 *_demo.html
 test_*.html
-demo_*.py
+test_*.py
+debug_*.py
+*_test.js
+*_debug.*
 
-# Coverage reports
+# =======================
+# Coverage & Testing
+# =======================
 htmlcov/
 .tox/
 .coverage
@@ -88,6 +133,45 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# FastAPI specific
+# =======================
+# FastAPI Specific
+# =======================
 .pytest_cache/
+*.pid
+
+# =======================
+# Documentation
+# =======================
+docs/_build/
+site/
+
+# =======================
+# Backup Files
+# =======================
+*.css.backup
+*.js.backup
+*.html.backup
+*_old.*
+*_backup.*
+backup_*/
+
+# =======================
+# Node.js (if using)
+# =======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# =======================
+# Local Development
+# =======================
+.local/
+local_settings.py
+dev_*.py

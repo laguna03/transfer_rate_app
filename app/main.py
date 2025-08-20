@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime, timedelta, timezone
 from app import models, crud, auth
 from app.database import SessionLocal, engine
 from app.models import CallLog, LogList, User, UserRole
@@ -315,6 +316,9 @@ def admin_dashboard(
     # Get users with their transfer rate data
     users = crud.get_users(db)
     users_with_stats = []
+    total_calls = 0
+    total_transfers = 0
+    transfer_rates = []
 
     for user in users:
         if user.role == UserRole.USER:  # Only calculate for regular users
@@ -327,6 +331,10 @@ def admin_dashboard(
                 "potential_calls": user_stats["potential_calls"],
                 "log_lists_count": user_stats["log_lists_count"]
             })
+            total_calls += user_stats["total_calls"]
+            total_transfers += user_stats["potential_calls"]
+            if user_stats["transfer_rate"] is not None:
+                transfer_rates.append(user_stats["transfer_rate"])
         else:
             users_with_stats.append({
                 "user": user,
@@ -335,6 +343,54 @@ def admin_dashboard(
                 "potential_calls": 0,
                 "log_lists_count": 0
             })
+
+    # Calculate statistics
+    total_users = len([u for u in users if u.role == UserRole.USER])
+    active_users = len([u for u in users if u.role ==
+                       UserRole.USER and u.is_active])
+    avg_transfer_rate = sum(transfer_rates) / \
+        len(transfer_rates) if transfer_rates else 0
+    system_avg_rate = round(avg_transfer_rate, 1)
+
+    # New users this month - handle timezone compatibility
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    new_users_month = 0
+
+    for u in users:
+        if u.role == UserRole.USER and u.created_at:
+            # Convert both to naive datetime for comparison
+            user_created = u.created_at.replace(
+                tzinfo=None) if u.created_at.tzinfo else u.created_at
+            if user_created >= thirty_days_ago:
+                new_users_month += 1
+
+    # Top performers (users with transfer rate >= 70%)
+    top_performers = len([rate for rate in transfer_rates if rate >= 70])
+
+    # Get recent call logs for the logs tab
+    recent_logs = db.query(models.CallLog).join(models.LogList).join(
+        models.User).order_by(models.CallLog.timestamp.desc()).limit(100).all()
+    recent_logs_data = []
+    for log in recent_logs:
+        log_list = db.query(models.LogList).filter(
+            models.LogList.id == log.log_list_id).first()
+        user = db.query(models.User).filter(
+            models.User.id == log_list.owner_id).first()
+
+        # Calculate user's transfer rate
+        user_stats = crud.get_user_transfer_rate(
+            db, user.id, POTENTIAL_SALE_CALL_TYPES)
+        transfer_rate = user_stats.get("transfer_rate") if user_stats else None
+
+        recent_logs_data.append({
+            "call_log": log,
+            "list_name": log_list.name,
+            "username": user.username,
+            "user_name": user.name,
+            "user_id": user.id,
+            "user_role": user.role.value,
+            "transfer_rate": transfer_rate
+        })
 
     # Get all log lists with statistics
     log_lists_with_stats = crud.get_all_log_lists_with_stats(
@@ -345,7 +401,16 @@ def admin_dashboard(
         "users": users,
         "users_with_stats": users_with_stats,
         "log_lists_with_stats": log_lists_with_stats,
-        "current_user": current_user
+        "current_user": current_user,
+        "total_users": total_users,
+        "active_users": active_users,
+        "new_users_month": new_users_month,
+        "avg_transfer_rate": round(avg_transfer_rate, 1),
+        "top_performers": top_performers,
+        "total_calls": total_calls,
+        "total_transfers": total_transfers,
+        "system_avg_rate": system_avg_rate,
+        "recent_logs": recent_logs_data
     })
 
 # Endpoint to serve the dashboard page with call data
@@ -563,6 +628,7 @@ def init_page(request: Request, db: Session = Depends(get_db)):
 def startup_event():
     models.Base.metadata.create_all(bind=engine)
 
+
 @app.delete("/admin/users/{user_id}", status_code=204)
 def delete_user(
     user_id: int,
@@ -630,3 +696,308 @@ def get_user_details(
         "stats": user_stats,
         "log_lists": user_log_lists
     }
+
+
+# Analytics endpoints for admin dashboard
+
+@app.get("/admin/analytics/performance")
+def get_performance_analytics(
+    days: int = 30,
+    user_group: str = "all",
+    call_type: str = "all",
+    current_user: User = Depends(auth.get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get performance analytics data for charts."""
+    from sqlalchemy import func
+
+    # Calculate date range (using naive datetime for database compatibility)
+    cutoff_date = datetime.now() - timedelta(days=days)
+
+    # Get users based on user_group filter
+    users = crud.get_users(db)
+    user_performance = []
+
+    for user in users:
+        if user.role == UserRole.USER and user.is_active:
+            # Apply user group filter
+            if user_group == "active" and not user.is_active:
+                continue
+
+            stats = crud.get_user_transfer_rate(
+                db, user.id, POTENTIAL_SALE_CALL_TYPES)
+            if stats["transfer_rate"] is not None:
+                user_performance.append({
+                    "username": user.username,
+                    "transfer_rate": stats["transfer_rate"],
+                    "total_calls": stats["total_calls"],
+                    "potential_calls": stats["potential_calls"]
+                })
+
+    # Sort by transfer rate
+    user_performance = sorted(
+        user_performance, key=lambda x: x["transfer_rate"], reverse=True)
+
+    # Apply user group filtering after sorting
+    if user_group == "top":
+        top_performers = user_performance[:5]  # Top 5 performers
+    elif user_group == "bottom":
+        top_performers = user_performance[-5:]  # Bottom 5 performers
+    else:
+        top_performers = user_performance[:10]  # Default top 10
+
+    # Get call type distribution with optional call_type filter
+    call_query = db.query(
+        models.CallLog.call_type,
+        func.count(models.CallLog.id).label('count')
+    ).filter(
+        models.CallLog.timestamp >= cutoff_date
+    )
+
+    # Apply call type filter if specified
+    if call_type != "all":
+        if call_type == "potential":
+            call_query = call_query.filter(
+                models.CallLog.call_type.in_(POTENTIAL_SALE_CALL_TYPES)
+            )
+        else:
+            call_query = call_query.filter(
+                models.CallLog.call_type == call_type)
+
+    call_type_stats = call_query.group_by(models.CallLog.call_type).all()
+
+    call_distribution = [{"type": stat.call_type,
+                          "count": stat.count} for stat in call_type_stats]
+
+    return {
+        "top_performers": top_performers,
+        "call_distribution": call_distribution,
+        "filters_applied": {
+            "days": days,
+            "user_group": user_group,
+            "call_type": call_type
+        },
+        "date_range": {
+            "from": cutoff_date.isoformat(),
+            "to": datetime.now().isoformat(),
+            "days": days
+        }
+    }
+
+
+@app.get("/admin/analytics/trends")
+def get_trend_analytics(
+    days: int = 30,
+    user_group: str = "all",
+    call_type: str = "all",
+    current_user: User = Depends(auth.get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get trend data for time-series charts."""
+    from sqlalchemy import func, extract
+
+    cutoff_date = datetime.now() - timedelta(days=days)
+
+    # Build base query for daily call counts
+    from sqlalchemy import case
+    query = db.query(
+        func.date(models.CallLog.timestamp).label('date'),
+        func.count(models.CallLog.id).label('total_calls'),
+        func.sum(
+            case(
+                (models.CallLog.call_type.in_(POTENTIAL_SALE_CALL_TYPES), 1),
+                else_=0
+            )
+        ).label('potential_calls')
+    ).filter(
+        models.CallLog.timestamp >= cutoff_date
+    )
+
+    # Apply call type filter if specified
+    if call_type != "all":
+        if call_type == "potential":
+            query = query.filter(
+                models.CallLog.call_type.in_(POTENTIAL_SALE_CALL_TYPES)
+            )
+        else:
+            query = query.filter(models.CallLog.call_type == call_type)
+
+    # Apply user group filter if specified
+    if user_group != "all":
+        # Get user IDs based on group filter
+        users = crud.get_users(db)
+        user_performance = []
+
+        for user in users:
+            if user.role == UserRole.USER and user.is_active:
+                stats = crud.get_user_transfer_rate(
+                    db, user.id, POTENTIAL_SALE_CALL_TYPES)
+                if stats["transfer_rate"] is not None:
+                    user_performance.append({
+                        "user_id": user.id,
+                        "transfer_rate": stats["transfer_rate"]
+                    })
+
+        # Filter users based on performance
+        if user_group == "top":
+            top_users = sorted(
+                user_performance, key=lambda x: x["transfer_rate"], reverse=True)[:5]
+            user_ids = [u["user_id"] for u in top_users]
+        elif user_group == "bottom":
+            bottom_users = sorted(
+                user_performance, key=lambda x: x["transfer_rate"])[:5]
+            user_ids = [u["user_id"] for u in bottom_users]
+        else:  # active
+            user_ids = [u["user_id"] for u in user_performance]
+
+        if user_ids:
+            query = query.filter(models.CallLog.user_id.in_(user_ids))
+
+    daily_calls = query.group_by(
+        func.date(models.CallLog.timestamp)
+    ).order_by(
+        func.date(models.CallLog.timestamp)
+    ).all()
+
+    trend_data = []
+    for day in daily_calls:
+        transfer_rate = (day.potential_calls / day.total_calls *
+                         100) if day.total_calls > 0 else 0
+        trend_data.append({
+            "date": day.date.isoformat(),
+            "total_calls": day.total_calls,
+            "potential_calls": day.potential_calls,
+            "transfer_rate": round(transfer_rate, 2)
+        })
+
+    return {
+        "trends": trend_data,
+        "filters_applied": {
+            "days": days,
+            "user_group": user_group,
+            "call_type": call_type
+        },
+        "summary": {
+            "total_days": len(trend_data),
+            "avg_daily_calls": sum(d["total_calls"] for d in trend_data) / len(trend_data) if trend_data else 0,
+            "avg_transfer_rate": sum(d["transfer_rate"] for d in trend_data) / len(trend_data) if trend_data else 0
+        }
+    }
+
+
+@app.get("/admin/analytics/call-logs")
+def get_filtered_call_logs(
+    user_id: Optional[int] = None,
+    call_type: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: User = Depends(auth.get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get filtered call logs for the admin logs panel."""
+    query = db.query(models.CallLog).join(models.LogList).join(models.User)
+
+    # Apply filters
+    if user_id:
+        query = query.filter(models.User.id == user_id)
+
+    if call_type:
+        query = query.filter(models.CallLog.call_type == call_type)
+
+    if date_from:
+        try:
+            from_date = datetime.fromisoformat(
+                date_from.replace('Z', '+00:00'))
+            # Convert to naive datetime for database compatibility
+            from_date = from_date.replace(
+                tzinfo=None) if from_date.tzinfo else from_date
+            query = query.filter(models.CallLog.timestamp >= from_date)
+        except ValueError:
+            # If parsing fails, ignore the filter
+            pass
+
+    if date_to:
+        try:
+            to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+            # Convert to naive datetime for database compatibility
+            to_date = to_date.replace(
+                tzinfo=None) if to_date.tzinfo else to_date
+            query = query.filter(models.CallLog.timestamp <= to_date)
+        except ValueError:
+            # If parsing fails, ignore the filter
+            pass
+
+    # Apply search filter
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            models.User.username.ilike(search_term) |
+            models.User.name.ilike(search_term) |
+            models.LogList.name.ilike(search_term) |
+            models.CallLog.call_type.ilike(search_term)
+        )
+
+    # Get total count for pagination
+    total_count = query.count()
+
+    # Apply pagination and ordering
+    logs = query.order_by(models.CallLog.timestamp.desc()
+                          ).offset(offset).limit(limit).all()
+
+    # Format response
+    log_data = []
+    for log in logs:
+        log_list = db.query(models.LogList).filter(
+            models.LogList.id == log.log_list_id).first()
+        user = db.query(models.User).filter(
+            models.User.id == log_list.owner_id).first()
+
+        # Calculate user's transfer rate
+        user_stats = crud.get_user_transfer_rate(
+            db, user.id, POTENTIAL_SALE_CALL_TYPES)
+        transfer_rate = user_stats.get("transfer_rate") if user_stats else None
+
+        log_data.append({
+            "id": log.id,
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            "call_type": log.call_type,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "name": user.name,
+                "role": user.role.value,
+                "transfer_rate": transfer_rate
+            },
+            "log_list": {
+                "id": log_list.id,
+                "name": log_list.name
+            },
+            "is_potential_sale": log.call_type in POTENTIAL_SALE_CALL_TYPES
+        })
+
+    return {
+        "logs": log_data,
+        "pagination": {
+            "total": total_count,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + limit) < total_count
+        },
+        "filters": {
+            "user_id": user_id,
+            "call_type": call_type,
+            "date_from": date_from,
+            "date_to": date_to,
+            "search": search
+        }
+    }
+
+# Redirect /admin to /admin/dashboard
+
+
+@app.get("/admin")
+def admin_redirect():
+    return RedirectResponse(url="/admin/dashboard", status_code=302)
