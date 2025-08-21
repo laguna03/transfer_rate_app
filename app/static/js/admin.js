@@ -220,7 +220,38 @@ async function resetPassword(userId) {
 
         if (response.ok) {
             const result = await response.json();
-            showAlert(`Password reset! New password: ${result.new_password}`, 'success');
+
+            // Show a more prominent alert with the temporary password
+            const tempPassword = result.temp_password;
+            const alertMessage = `
+                <div class="text-center">
+                    <h5 class="mb-3">Password Reset Successful!</h5>
+                    <p class="mb-2">New temporary password:</p>
+                    <div class="bg-light p-3 rounded mb-3">
+                        <h4 class="text-primary mb-0 font-monospace">${tempPassword}</h4>
+                    </div>
+                    <small class="text-muted">Please save this password and share it with the user securely.</small>
+                </div>
+            `;
+
+            // Create a custom alert that stays longer
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alertDiv.style.cssText = 'top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; min-width: 400px; max-width: 500px;';
+            alertDiv.innerHTML = `
+                ${alertMessage}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(alertDiv);
+
+            // Remove after 15 seconds instead of 5
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 15000);
+
         } else {
             const error = await response.json();
             showAlert(error.detail || 'Error resetting password', 'danger');
@@ -684,10 +715,10 @@ async function loadAnalyticsData(days = 30, userGroup = 'all', callType = 'all')
     } catch (error) {
         console.error('Error fetching analytics data:', error);
         showAlert('Error loading analytics data: ' + error.message, 'danger');
-        
+
         // Clear loading indicators
         showAnalyticsLoading(false);
-        
+
         // Don't proceed with chart updates if data fetch failed
         return;
     }
