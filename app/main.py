@@ -703,7 +703,6 @@ def get_user_details(
 @app.get("/admin/analytics/performance")
 def get_performance_analytics(
     days: int = 30,
-    user_group: str = "all",
     call_type: str = "all",
     current_user: User = Depends(auth.get_current_admin_user),
     db: Session = Depends(get_db)
@@ -714,16 +713,12 @@ def get_performance_analytics(
     # Calculate date range (using naive datetime for database compatibility)
     cutoff_date = datetime.now() - timedelta(days=days)
 
-    # Get users based on user_group filter
+    # Get users - show all active users
     users = crud.get_users(db)
     user_performance = []
 
     for user in users:
         if user.role == UserRole.USER and user.is_active:
-            # Apply user group filter
-            if user_group == "active" and not user.is_active:
-                continue
-
             stats = crud.get_user_transfer_rate(
                 db, user.id, POTENTIAL_SALE_CALL_TYPES)
             if stats["transfer_rate"] is not None:
@@ -734,19 +729,12 @@ def get_performance_analytics(
                     "potential_calls": stats["potential_calls"]
                 })
 
-    # Sort by transfer rate
+    # Sort by transfer rate and show top 10
     user_performance = sorted(
         user_performance, key=lambda x: x["transfer_rate"], reverse=True)
+    top_performers = user_performance[:10]  # Show top 10 performers
 
-    # Apply user group filtering after sorting
-    if user_group == "top":
-        top_performers = user_performance[:5]  # Top 5 performers
-    elif user_group == "bottom":
-        top_performers = user_performance[-5:]  # Bottom 5 performers
-    else:
-        top_performers = user_performance[:10]  # Default top 10
-
-    # Get call type distribution with optional call_type filter
+    # Get call type distribution
     call_query = db.query(
         models.CallLog.call_type,
         func.count(models.CallLog.id).label('count')
@@ -774,7 +762,6 @@ def get_performance_analytics(
         "call_distribution": call_distribution,
         "filters_applied": {
             "days": days,
-            "user_group": user_group,
             "call_type": call_type
         },
         "date_range": {
@@ -788,7 +775,6 @@ def get_performance_analytics(
 @app.get("/admin/analytics/trends")
 def get_trend_analytics(
     days: int = 30,
-    user_group: str = "all",
     call_type: str = "all",
     current_user: User = Depends(auth.get_current_admin_user),
     db: Session = Depends(get_db)
@@ -822,37 +808,6 @@ def get_trend_analytics(
         else:
             query = query.filter(models.CallLog.call_type == call_type)
 
-    # Apply user group filter if specified
-    if user_group != "all":
-        # Get user IDs based on group filter
-        users = crud.get_users(db)
-        user_performance = []
-
-        for user in users:
-            if user.role == UserRole.USER and user.is_active:
-                stats = crud.get_user_transfer_rate(
-                    db, user.id, POTENTIAL_SALE_CALL_TYPES)
-                if stats["transfer_rate"] is not None:
-                    user_performance.append({
-                        "user_id": user.id,
-                        "transfer_rate": stats["transfer_rate"]
-                    })
-
-        # Filter users based on performance
-        if user_group == "top":
-            top_users = sorted(
-                user_performance, key=lambda x: x["transfer_rate"], reverse=True)[:5]
-            user_ids = [u["user_id"] for u in top_users]
-        elif user_group == "bottom":
-            bottom_users = sorted(
-                user_performance, key=lambda x: x["transfer_rate"])[:5]
-            user_ids = [u["user_id"] for u in bottom_users]
-        else:  # active
-            user_ids = [u["user_id"] for u in user_performance]
-
-        if user_ids:
-            query = query.filter(models.CallLog.user_id.in_(user_ids))
-
     daily_calls = query.group_by(
         func.date(models.CallLog.timestamp)
     ).order_by(
@@ -874,7 +829,6 @@ def get_trend_analytics(
         "trends": trend_data,
         "filters_applied": {
             "days": days,
-            "user_group": user_group,
             "call_type": call_type
         },
         "summary": {
@@ -1001,3 +955,112 @@ def get_filtered_call_logs(
 @app.get("/admin")
 def admin_redirect():
     return RedirectResponse(url="/admin/dashboard", status_code=302)
+
+
+# New endpoints for user details modal
+
+@app.get("/admin/users/{user_id}/lists")
+def get_user_lists(
+    user_id: int,
+    current_user: User = Depends(auth.get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get user's lists with summary statistics."""
+    # Get the user
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get user's lists
+    lists = db.query(models.LogList).filter(
+        models.LogList.owner_id == user_id).all()
+
+    # Calculate statistics for each list
+    list_data = []
+    for log_list in lists:
+        # Get call count for this list
+        call_count = db.query(models.CallLog).filter(
+            models.CallLog.log_list_id == log_list.id
+        ).count()
+
+        # Get last call date
+        last_call = db.query(models.CallLog).filter(
+            models.CallLog.log_list_id == log_list.id
+        ).order_by(models.CallLog.timestamp.desc()).first()
+
+        list_data.append({
+            "id": log_list.id,
+            "name": log_list.name,
+            "call_count": call_count,
+            "last_call_date": last_call.timestamp.isoformat() if last_call else None
+        })
+
+    # Get user's overall statistics
+    user_stats = crud.get_user_transfer_rate(
+        db, user_id, POTENTIAL_SALE_CALL_TYPES)
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "name": user.name,
+        "role": user.role.value,
+        "lists": list_data,
+        "total_calls": user_stats.get("total_calls", 0),
+        "potential_calls": user_stats.get("potential_calls", 0),
+        "transfer_rate": user_stats.get("transfer_rate")
+    }
+
+
+@app.get("/admin/lists/{list_id}/details")
+def get_list_details(
+    list_id: int,
+    user_id: Optional[int] = None,
+    current_user: User = Depends(auth.get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed information about a specific list."""
+    # Get the list
+    log_list = db.query(models.LogList).filter(
+        models.LogList.id == list_id).first()
+    if not log_list:
+        raise HTTPException(status_code=404, detail="List not found")
+
+    # Verify access if user_id is provided
+    if user_id and log_list.owner_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get calls for this list (last 50 calls)
+    calls = db.query(models.CallLog).filter(
+        models.CallLog.log_list_id == list_id
+    ).order_by(models.CallLog.timestamp.desc()).limit(50).all()
+
+    # Format call data
+    call_data = []
+    potential_calls = 0
+
+    for call in calls:
+        is_potential = call.call_type in POTENTIAL_SALE_CALL_TYPES
+        if is_potential:
+            potential_calls += 1
+
+        call_data.append({
+            "id": call.id,
+            "timestamp": call.timestamp.isoformat() if call.timestamp else None,
+            "call_type": call.call_type,
+            "is_potential_sale": is_potential
+        })
+
+    # Calculate transfer rate for this list
+    total_calls = len(calls)
+    transfer_rate = (potential_calls / total_calls *
+                     100) if total_calls > 0 else 0
+
+    return {
+        "id": log_list.id,
+        "name": log_list.name,
+        "owner_id": log_list.owner_id,
+        "calls": call_data,
+        "total_calls": total_calls,
+        "potential_calls": potential_calls,
+        "transfer_rate": round(transfer_rate, 2)
+    }

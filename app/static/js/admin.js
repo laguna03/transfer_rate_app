@@ -330,11 +330,9 @@ function initializeFilters() {
 
     // Analytics filters
     const dateRangeFilter = document.getElementById('dateRangeFilter');
-    const userGroupFilter = document.getElementById('userGroupFilter');
     const callTypeFilter = document.getElementById('callTypeFilter');
 
     if (dateRangeFilter) dateRangeFilter.addEventListener('change', applyAnalyticsFilters);
-    if (userGroupFilter) userGroupFilter.addEventListener('change', applyAnalyticsFilters);
     if (callTypeFilter) callTypeFilter.addEventListener('change', applyAnalyticsFilters);
 
     // Log filters
@@ -466,10 +464,9 @@ function applyAnalyticsFilters() {
 
     // Get filter values from the form (using correct IDs)
     const dateRange = document.getElementById('dateRangeFilter')?.value || '30';
-    const userGroup = document.getElementById('userGroupFilter')?.value || 'all';
     const callType = document.getElementById('callTypeFilter')?.value || 'all';
 
-    console.log('Filter values:', { dateRange, userGroup, callType });
+    console.log('Filter values:', { dateRange, callType });
 
     // Convert date range to days (HTML already provides the number directly)
     let days = parseInt(dateRange);
@@ -478,7 +475,7 @@ function applyAnalyticsFilters() {
     }
 
     // Load analytics with the selected filters
-    loadAnalyticsData(days, userGroup, callType).finally(() => {
+    loadAnalyticsData(days, callType).finally(() => {
         // Always reset button state
         if (applyButton) {
             applyButton.disabled = false;
@@ -548,7 +545,7 @@ function initializeAnalytics() {
     console.log('Plotly available, loading analytics immediately...');
 
     // Initialize filter status display
-    updateFilterStatusDisplay(30, 'all', 'all');
+    updateFilterStatusDisplay(30, 'all');
 
     // Load analytics data immediately
     setTimeout(() => {
@@ -633,9 +630,9 @@ function setupTabHandlers() {
     });
 }
 
-async function loadAnalyticsData(days = 30, userGroup = 'all', callType = 'all') {
+async function loadAnalyticsData(days = 30, callType = 'all') {
     console.log('=== Loading Analytics Data ===');
-    console.log('Parameters:', { days, userGroup, callType });
+    console.log('Parameters:', { days, callType });
 
     // Check if chart elements exist
     const topChart = document.getElementById('topPerformersChart');
@@ -658,10 +655,6 @@ async function loadAnalyticsData(days = 30, userGroup = 'all', callType = 'all')
             days: days.toString()
         });
 
-        if (userGroup && userGroup !== 'all') {
-            params.append('user_group', userGroup);
-        }
-
         if (callType && callType !== 'all') {
             params.append('call_type', callType);
         }
@@ -671,14 +664,15 @@ async function loadAnalyticsData(days = 30, userGroup = 'all', callType = 'all')
         console.log('Full API URLs:');
         console.log('- Performance:', `/admin/analytics/performance?${queryString}`);
         console.log('- Trends:', `/admin/analytics/trends?${queryString}`);
+        console.log('Filter parameters being sent:', { days, callType });
 
         // Show user feedback about applied filters
-        const filterSummary = `Filters: ${days} days, ${userGroup} users, ${callType} calls`;
+        const filterSummary = `Filters: ${days} days, ${callType} calls`;
         console.log('Applied filters:', filterSummary);
         showAlert(`Loading analytics with filters: ${filterSummary}`, 'info');
 
         // Update filter status display
-        updateFilterStatusDisplay(days, userGroup, callType);
+        updateFilterStatusDisplay(days, callType);
 
         // Fetch performance data
         const performanceResponse = await fetch(`/admin/analytics/performance?${queryString}`, {
@@ -1028,7 +1022,7 @@ function initializeDataTables() {
         usersTable = $(usersTableElement).DataTable({
             responsive: true,
             pageLength: 25,
-            order: [[0, 'asc']], // Sort by username
+            order: [[1, 'desc']], // Sort by role (ADMIN first, then USER)
             columnDefs: [
                 { orderable: false, targets: [4] } // Disable sorting on Actions column
             ],
@@ -1067,22 +1061,18 @@ function initializeDataTables() {
 
 
 
-function updateFilterStatusDisplay(days, userGroup, callType) {
+function updateFilterStatusDisplay(days, callType) {
     const statusElement = document.getElementById('filterStatus');
     if (!statusElement) return;
 
     // Format user-friendly filter descriptions
     const dateText = `Last ${days} days`;
-    const userText = userGroup === 'all' ? 'All users' :
-                    userGroup === 'active' ? 'Active users' :
-                    userGroup === 'top' ? 'Top performers' :
-                    userGroup === 'bottom' ? 'Needs improvement' : userGroup;
     const callText = callType === 'all' ? 'All call types' :
                     callType === 'potential' ? 'Potential sales only' : callType;
 
     statusElement.innerHTML = `
         <i class="fas fa-info-circle me-1"></i>
-        Current filters: ${dateText}, ${userText}, ${callText}
+        Current filters: ${dateText}, ${callText}
     `;
 }
 
@@ -1100,6 +1090,8 @@ window.viewUserDetails = viewUserDetails;
 window.applyAnalyticsFilters = applyAnalyticsFilters;
 window.applyLogFilters = applyLogFilters;
 window.showUserLogs = showUserLogs;
+window.showUserLogsFiltered = showUserLogsFiltered;
+window.showListDetails = showListDetails;
 window.updateFilterStatusDisplay = updateFilterStatusDisplay;
 window.loadAnalyticsData = loadAnalyticsData;
 
@@ -1221,7 +1213,37 @@ function updateLogsTable(logs) {
     });
 }
 
-function showUserLogs(username, userId) {
+async function showUserLogs(username, userId) {
+    console.log(`Showing user details for: ${username} (ID: ${userId})`);
+
+    try {
+        // Fetch user's lists data
+        const response = await fetch(`/admin/users/${userId}/lists`, {
+            headers: {
+                'Authorization': getCookie('access_token')
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const userData = await response.json();
+        console.log('User data received:', userData);
+
+        // Show the user details modal
+        showUserDetailsModal(username, userId, userData);
+
+    } catch (error) {
+        console.error('Error loading user details:', error);
+        showAlert('Error loading user details: ' + error.message, 'danger');
+
+        // Fallback to the old behavior if API fails
+        showUserLogsFiltered(username, userId);
+    }
+}
+
+function showUserLogsFiltered(username, userId) {
     console.log(`Showing logs for user: ${username} (ID: ${userId})`);
 
     // Set the user filter
@@ -1252,6 +1274,321 @@ function showUserLogs(username, userId) {
         loadFilteredLogs(userId.toString(), '', '', '', '');
         showAlert(`Showing logs for ${username}`, 'info');
     }, 300);
+}
+
+function showUserDetailsModal(username, userId, userData) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('userDetailsModal');
+    if (!modal) {
+        modal = createUserDetailsModal();
+        document.body.appendChild(modal);
+    }
+
+    // Update modal content
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+
+    modalTitle.innerHTML = `
+        <i class="fas fa-user me-2"></i>
+        ${userData.name || username}
+        <small class="text-muted ms-2">(${username})</small>
+    `;
+
+    // Create lists content
+    let listsContent = '';
+
+    if (userData.lists && userData.lists.length > 0) {
+        listsContent = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="mb-3">
+                        <i class="fas fa-list me-2"></i>
+                        Available Lists (${userData.lists.length})
+                    </h6>
+                    <div class="list-group list-group-flush">
+        `;
+
+        userData.lists.forEach(list => {
+            const callCount = list.call_count || 0;
+            const lastCall = list.last_call_date ? new Date(list.last_call_date).toLocaleDateString() : 'Never';
+
+            listsContent += `
+                <a href="#"
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
+                   onclick="showListDetails(${list.id}, '${list.name}', ${userId}, '${username}'); return false;">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-bold">${list.name}</div>
+                        <small class="text-muted">
+                            <i class="fas fa-phone me-1"></i>${callCount} calls
+                            <span class="ms-2">
+                                <i class="fas fa-calendar me-1"></i>Last: ${lastCall}
+                            </span>
+                        </small>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </a>
+            `;
+        });
+
+        listsContent += `
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-3">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Performance Summary
+                    </h6>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="border-end">
+                                        <h4 class="text-primary mb-1">${userData.transfer_rate ? userData.transfer_rate.toFixed(1) : '0.0'}%</h4>
+                                        <small class="text-muted">Transfer Rate</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-info mb-1">${userData.total_calls || 0}</h4>
+                                    <small class="text-muted">Total Calls</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button class="btn btn-outline-primary btn-sm w-100"
+                                onclick="showUserLogsFiltered('${username}', ${userId}); bootstrap.Modal.getInstance(document.getElementById('userDetailsModal')).hide();">
+                            <i class="fas fa-filter me-2"></i>
+                            View All Call Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        listsContent = `
+            <div class="text-center py-4">
+                <i class="fas fa-list fa-3x text-muted mb-3"></i>
+                <h6 class="text-muted">No Lists Available</h6>
+                <p class="text-muted mb-0">This user has no lists assigned.</p>
+            </div>
+        `;
+    }
+
+    modalBody.innerHTML = listsContent;
+
+    // Show the modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+function createUserDetailsModal() {
+    const modalHTML = `
+        <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="userDetailsModalLabel">User Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Content will be populated dynamically -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = modalHTML;
+    return tempDiv.firstElementChild;
+}
+
+async function showListDetails(listId, listName, userId, username) {
+    console.log(`Showing details for list: ${listName} (ID: ${listId}) for user: ${username}`);
+
+    try {
+        // Show loading state
+        showAlert('Loading list details...', 'info');
+
+        // Fetch list details
+        const response = await fetch(`/admin/lists/${listId}/details?user_id=${userId}`, {
+            headers: {
+                'Authorization': getCookie('access_token')
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const listData = await response.json();
+        console.log('List data received:', listData);
+
+        // Show list details modal
+        showListDetailsModal(listName, listData, username);
+
+    } catch (error) {
+        console.error('Error loading list details:', error);
+        showAlert('Error loading list details: ' + error.message, 'danger');
+    }
+}
+
+function showListDetailsModal(listName, listData, username) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('listDetailsModal');
+    if (!modal) {
+        modal = createListDetailsModal();
+        document.body.appendChild(modal);
+    }
+
+    // Update modal content
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+
+    modalTitle.innerHTML = `
+        <i class="fas fa-list me-2"></i>
+        ${listName}
+        <small class="text-muted ms-2">(${username})</small>
+    `;
+
+    // Create list content
+    let content = '';
+
+    if (listData.calls && listData.calls.length > 0) {
+        content = `
+            <div class="mb-3">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="text-primary">${listData.calls.length}</h5>
+                                <small class="text-muted">Total Calls</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="text-success">${listData.potential_calls || 0}</h5>
+                                <small class="text-muted">Potential Sales</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="text-info">${listData.transfer_rate ? listData.transfer_rate.toFixed(1) : '0.0'}%</h5>
+                                <small class="text-muted">Transfer Rate</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="mb-3">
+                <i class="fas fa-phone me-2"></i>
+                Recent Calls
+            </h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Call Type</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        listData.calls.slice(0, 10).forEach(call => {
+            const timestamp = new Date(call.timestamp).toLocaleDateString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            const potentialSaleTypes = ['AOD', 'APPOINTMENT', 'T2', 'HPA'];
+            const isPotentialSale = potentialSaleTypes.includes(call.call_type);
+            const statusBadge = isPotentialSale
+                ? '<span class="badge bg-success">Potential Sale</span>'
+                : `<span class="badge bg-secondary">${call.call_type}</span>`;
+
+            content += `
+                <tr>
+                    <td><small>${timestamp}</small></td>
+                    <td><span class="badge bg-info">${call.call_type}</span></td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        });
+
+        content += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        if (listData.calls.length > 10) {
+            content += `
+                <div class="text-center mt-3">
+                    <small class="text-muted">Showing 10 of ${listData.calls.length} calls</small>
+                </div>
+            `;
+        }
+    } else {
+        content = `
+            <div class="text-center py-4">
+                <i class="fas fa-phone fa-3x text-muted mb-3"></i>
+                <h6 class="text-muted">No Calls Found</h6>
+                <p class="text-muted mb-0">This list has no call records.</p>
+            </div>
+        `;
+    }
+
+    modalBody.innerHTML = content;
+
+    // Show the modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+function createListDetailsModal() {
+    const modalHTML = `
+        <div class="modal fade" id="listDetailsModal" tabindex="-1" aria-labelledby="listDetailsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="listDetailsModalLabel">List Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Content will be populated dynamically -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = modalHTML;
+    return tempDiv.firstElementChild;
 }
 
 // =======================

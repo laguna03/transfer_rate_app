@@ -9,40 +9,341 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 1rem;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            max-width: 420px;
+            width: 100%;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+        }
+
+        .login-header .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-logo {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+
+        .login-title {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-subtitle {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+            font-weight: 400;
+            font-size: 0.95rem;
+        }
+
+        .login-body {
+            padding: 2rem;
+        }
+
+        .form-floating {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-floating .form-control {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            padding: 1rem 0.75rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+
+        .form-floating .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            background-color: white;
+        }
+
+        .form-floating label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.875rem 1.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            color: white;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-login:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+            color: #dc3545;
+            border-left: 4px solid #dc3545;
+        }
+
+        .admin-section {
+            text-align: center;
+            padding-top: 1rem;
+            border-top: 1px solid #e9ecef;
+            margin-top: 1rem;
+        }
+
+        .admin-section-text {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .btn-admin {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            border: 2px solid transparent;
+        }
+
+        .btn-admin:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #5a6fd8;
+            text-decoration: none;
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .input-group-text {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+        }
+
+        .floating-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .floating-element {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .floating-element:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .floating-element:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            top: 20%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .floating-element:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+
+        .floating-element:nth-child(4) {
+            width: 100px;
+            height: 100px;
+            bottom: 10%;
+            right: 20%;
+            animation-delay: 1s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-20px) rotate(120deg); }
+            66% { transform: translateY(20px) rotate(240deg); }
+        }
+
+        @media (max-width: 576px) {
+            .login-container {
+                margin: 1rem;
+                border-radius: 16px;
+            }
+
+            .login-header {
+                padding: 1.5rem;
+            }
+
+            .login-body {
+                padding: 1.5rem;
+            }
+
+            .login-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Loading state */
+        .btn-login.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .btn-login.loading::after {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-left: 8px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card mt-5">
-                    <div class="card-header">
-                        <h3 class="text-center">Login</h3>
-                    </div>
-                    <div class="card-body">
-                        {% if error %}
-                        <div class="alert alert-danger">{{ error }}</div>
-                        {% endif %}
+    <!-- Floating Background Elements -->
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
 
-                        <form method="post" action="/login">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Login</button>
-                        </form>
-
-                        <div class="admin-creation-section text-center">
-                            <p class="admin-creation-text">Need to create an administrator account?</p>
-                            <a href="/init" class="btn-create-admin">Create Administrator Account</a>
-                        </div>
-                    </div>
+    <!-- Main Login Container -->
+    <div class="login-container">
+        <!-- Header Section -->
+        <div class="login-header">
+            <div class="content">
+                <div class="login-logo">
+                    <i class="fas fa-chart-line"></i>
                 </div>
+                <h1 class="login-title">Welcome Back</h1>
+                <p class="login-subtitle">Sign in to your Transfer Rate Dashboard</p>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <div class="login-body">
+            {% if error %}
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+            </div>
+            {% endif %}
+
+            <form method="post" action="/login" id="loginForm">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                    <label for="username">
+                        <i class="fas fa-user me-2"></i>Username
+                    </label>
+                </div>
+
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                    <label for="password">
+                        <i class="fas fa-lock me-2"></i>Password
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-login" id="loginBtn">
+                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                </button>
+            </form>
+
+            <!-- Admin Account Creation -->
+            <div class="admin-section">
+                <p class="admin-section-text">
+                    <i class="fas fa-crown me-1"></i>Need administrator access?
+                </p>
+                <a href="/init" class="btn-admin">
+                    <i class="fas fa-user-shield me-1"></i>Create Administrator Account
+                </a>
             </div>
         </div>
     </div>
